@@ -1,5 +1,4 @@
-﻿
-using rental_scooter.Dtos;
+﻿using rental_scooter.Dtos;
 using rental_scooter.Models;
 using rental_scooter.Repositories;
 
@@ -20,18 +19,19 @@ namespace rental_scooter.Services
         {
             var historyEntries = await rentalHistoryRepository.GetByUserIdentifier(user);
             var modifications = new WeeklyModifiers();
+            var remainingTime = TimeSpan.FromHours(2);
+
             if (historyEntries != null)
             {
                 modifications = GetModifications(historyEntries);
             }
-            var remainingTime = TimeSpan.FromHours(2);
 
             return new UserHistoryEntryDto
             {
                 rentalHistoryEntries = historyEntries,
                 HasPenalties = modifications.HasPenalties,
                 HasTimeBonuses = modifications.HasTimeBonuses,
-                RemainingTime = remainingTime - modifications.WeeklyRemainingTime
+                RemainingTime = remainingTime - modifications.WeeklyElapsedTime
             };
         }
 
@@ -41,14 +41,55 @@ namespace rental_scooter.Services
             return result;
         }
 
-        public Task<TimeSpan> RentScooter(ScooterRentRequest request)
+        public async Task RentScooter(ScooterRentRequest request)
         {
-            throw new NotImplementedException();
+           await ValidateDataOnAdd(request);
+
+            var rentObject = new RentalHistoryEntry
+            {
+                UserIdentifier = request.UserIdentifier,
+                
+                ScooterId = request.ScooterId,
+                Scooter = null, 
+
+                PickUpStationId = request.StationId,
+                PickUpStation = null,
+                
+                RentalStartDateTime = DateTime.Now,
+            };
+            
+            await rentalHistoryRepository.RentScooter(rentObject);
         }
+
+
 
         public Task<IList<UserHistoryEntryDto>> ReturnScooter(ScooterRentRequest request)
         {
             throw new NotImplementedException();
+        }
+
+        private async Task ValidateDataOnAdd(ScooterRentRequest request)
+        {
+            var doesScooterExist = await stationRepository.DoesScooterExist(request.ScooterId);
+            if (doesScooterExist == false) { throw new InvalidOperationException("No se encontro el scooter"); }
+            
+            var doesStationExist = await stationRepository.DoesStationExist(request.StationId);
+            if (doesStationExist == false) { throw new InvalidOperationException("No se encontro la estacion"); }
+
+            var userRelatedHistoryEntries = await rentalHistoryRepository.GetByUserIdentifier(request.UserIdentifier);
+            if (userRelatedHistoryEntries != null)
+            {
+                var modifications = GetModifications(userRelatedHistoryEntries);
+                if (userRelatedHistoryEntries.LastOrDefault().DropOffStation is null)
+                {
+                    throw new InvalidOperationException("el usuario tiene viajes pendientes");
+                }
+
+                else if (modifications.WeeklyRemainingTime < TimeSpan.FromHours(0))
+                {
+                    throw new InvalidOperationException("El usuario no posee tiempo restante");
+                }
+            }
         }
 
         private WeeklyModifiers GetModifications(List<RentalHistoryEntry> entries)
@@ -58,6 +99,8 @@ namespace rental_scooter.Services
             bool penalties = false;
             bool bonus = false;
             TimeSpan totalElapsedTime = TimeSpan.Zero;
+            var remainingTime = TimeSpan.FromHours(2);
+
 
             if (lastWeekEntries != null)
             {
@@ -66,14 +109,25 @@ namespace rental_scooter.Services
                 totalElapsedTime = lastWeekEntries
                     .Where(entry => entry.TimeSpan.HasValue)
                     .Aggregate(TimeSpan.Zero, (total, entry) => total + entry.TimeSpan.Value);
+
+                if (bonus)
+                {
+                    remainingTime += TimeSpan.FromMinutes(30);
+                }
+                if (penalties)
+                {
+                    remainingTime -= TimeSpan.FromMinutes(30);
+
+                }
+                remainingTime = remainingTime - totalElapsedTime;
             }
             return new WeeklyModifiers
             {
                 HasTimeBonuses = bonus,
                 HasPenalties = penalties,
-                WeeklyRemainingTime = totalElapsedTime
+                WeeklyElapsedTime = totalElapsedTime,
+                WeeklyRemainingTime = remainingTime,
             };
         }
-
     }
 }

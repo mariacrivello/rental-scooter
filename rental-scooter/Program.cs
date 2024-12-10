@@ -10,7 +10,9 @@ builder.Services.AddControllers().AddJsonOptions(x =>
    x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve);
 
 var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") ??
-                        builder.Configuration.GetConnectionString("DefaultConnection");
+                            builder.Configuration.GetConnectionString("AWS")??
+                            builder.Configuration.GetConnectionString("DefaultConnection");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString));
 

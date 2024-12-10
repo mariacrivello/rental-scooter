@@ -38,16 +38,16 @@ namespace rental_scooter.Controllers
         [HttpPost]
         [Route("rent-scooter")]
         [SwaggerOperation(Summary = "Retira un scooter")]
-        public async Task<IActionResult> RentScooter(ScooterRentRequest request)
+        public async Task<IActionResult> RentScooter([FromBody]ScooterRentRequest request)
         {
-            var result = await rentalService.RentScooter(request);
-            return Ok(result);
+            await rentalService.RentScooter(request);
+            return Ok();
         }
 
         [HttpPut]
         [Route("return-scooter")]
         [SwaggerOperation(Summary = "Devuelve un scooter")]
-        public async Task<IActionResult> ReturnScooter(ScooterRentRequest request)
+        public async Task<IActionResult> ReturnScooter([FromBody]ScooterRentRequest request)
         {
             var result = await rentalService.ReturnScooter(request);
             return Ok(result);

@@ -5,7 +5,7 @@ namespace rental_scooter.Repositories
     public interface IRentalHistoryRepository
     {
         Task<List<RentalHistoryEntry>> GetByUserIdentifier(string userIdentifier);
-        Task RentScooter(string userId, int scooterId);
+        Task RentScooter(RentalHistoryEntry rentalHistoryEntry);
         Task ReturnScooter (string userId, int stationId);
 
     }

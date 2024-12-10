@@ -21,6 +21,11 @@ namespace rental_scooter.Repositories
             throw new NotImplementedException();
         }
 
+        public Task RentScooter(RentalHistoryEntry rentalHistoryEntry)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task ReturnScooter(string userId, int stationId)
         {
             throw new NotImplementedException();
