@@ -1,0 +1,6 @@
+@rental_scooter_HostAddress = http://localhost:5014
+
+GET {{rental_scooter_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
