@@ -13,22 +13,25 @@ namespace rental_scooter.Repositories
 
         public async Task<List<RentalHistoryEntry>> GetByUserIdentifier(string userIdentifier)
         {
-            return await _dataContext.RentalHistoryEntries.Where(f => f.UserIdentifier.Equals(userIdentifier)).ToListAsync();
+            return await _dataContext.RentalHistoryEntries.Where(f => f.UserIdentifier.Equals(userIdentifier)).OrderByDescending(f => f.Id).Include(f=> f.Scooter).ToListAsync();
         }
 
-        public Task RentScooter(string userId, int scooterId)
+        public async Task RentScooter(RentalHistoryEntry rentalHistoryEntry)
         {
-            throw new NotImplementedException();
+            await _dataContext.RentalHistoryEntries.AddAsync(rentalHistoryEntry);
+            await _dataContext.SaveChangesAsync();
         }
 
-        public Task RentScooter(RentalHistoryEntry rentalHistoryEntry)
+        public async Task ReturnScooter(RentalHistoryEntry rentalHistoryEntry)
         {
-            throw new NotImplementedException();
-        }
+            _dataContext.Attach(rentalHistoryEntry);
 
-        public Task ReturnScooter(string userId, int stationId)
-        {
-            throw new NotImplementedException();
+            _dataContext.Entry(rentalHistoryEntry).Property(s => s.DropOffStationId).IsModified = true;
+            _dataContext.Entry(rentalHistoryEntry).Property(s => s.RentalEndDateTime).IsModified = true;
+            _dataContext.Entry(rentalHistoryEntry).Property(s => s.DurationAsTicks).IsModified = true;
+
+            // Save changes to the database
+            await _dataContext.SaveChangesAsync();
         }
     }
 }

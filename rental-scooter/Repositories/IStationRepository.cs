@@ -4,9 +4,9 @@ namespace rental_scooter.Repositories
 {
     public interface IStationRepository
     {
-        Task<bool> DoesScooterExist(int scooterId);
         Task<bool> DoesStationExist(int stationId);
-        Task<Station> GetByScooterId(int? scooterId);
+        Task<Station> GetByIdWithScooters(int stationId);
+        Task<Station> GetStationByScooterId(int? scooterId);
         Task<IEnumerable<Station>> GetStationsWithAvailableScootersAsync();
     }
 }

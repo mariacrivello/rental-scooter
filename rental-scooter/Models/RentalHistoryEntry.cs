@@ -1,4 +1,7 @@
-﻿namespace rental_scooter.Models
+﻿using System;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace rental_scooter.Models
 {
     public class RentalHistoryEntry
     {
@@ -16,6 +19,14 @@
 
         public DateTime RentalStartDateTime { get; set; }
         public DateTime? RentalEndDateTime { get; set; }
-        public TimeSpan? TimeSpan { get; set; }
+
+        public Int64? DurationAsTicks { get; set; }
+
+        [NotMapped]
+        public TimeSpan? RentalDuration
+        {
+            get { return DurationAsTicks.HasValue ? TimeSpan.FromTicks(DurationAsTicks.Value) : null; }
+            set { DurationAsTicks = value.HasValue ? value.Value.Ticks : null; }
+        }
     }
 }

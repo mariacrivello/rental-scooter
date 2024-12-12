@@ -9,6 +9,6 @@ namespace rental_scooter.Services
         Task<UserHistoryEntryDto> GetHistoryEntriesByUserIdentifier(string user);
         Task<IEnumerable<Station>> GetStationsWithAvailableScooters();
         Task RentScooter(ScooterRentRequest request);
-        Task<IList<UserHistoryEntryDto>> ReturnScooter(ScooterRentRequest request);
+        Task ReturnScooter(ScooterReturnRequest request);
     }
 }

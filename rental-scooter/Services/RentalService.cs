@@ -8,18 +8,19 @@ namespace rental_scooter.Services
     {
         private readonly IStationRepository stationRepository;
         private readonly IRentalHistoryRepository rentalHistoryRepository;
+        private readonly IScooterRepository scooterRepository;
 
-        public RentalService(IStationRepository stationRepository, IRentalHistoryRepository rentalHistoryRepository)
+        public RentalService(IStationRepository stationRepository, IRentalHistoryRepository rentalHistoryRepository, IScooterRepository scooterRepository)
         {
             this.stationRepository = stationRepository;
             this.rentalHistoryRepository = rentalHistoryRepository;
+            this.scooterRepository = scooterRepository;
         }
 
         public async Task<UserHistoryEntryDto> GetHistoryEntriesByUserIdentifier(string user)
         {
             var historyEntries = await rentalHistoryRepository.GetByUserIdentifier(user);
             var modifications = new WeeklyModifiers();
-            var remainingTime = TimeSpan.FromHours(2);
 
             if (historyEntries != null)
             {
@@ -31,7 +32,7 @@ namespace rental_scooter.Services
                 rentalHistoryEntries = historyEntries,
                 HasPenalties = modifications.HasPenalties,
                 HasTimeBonuses = modifications.HasTimeBonuses,
-                RemainingTime = remainingTime - modifications.WeeklyElapsedTime
+                RemainingTime = modifications.WeeklyRemainingTime
             };
         }
 
@@ -43,72 +44,127 @@ namespace rental_scooter.Services
 
         public async Task RentScooter(ScooterRentRequest request)
         {
-           await ValidateDataOnAdd(request);
+            var scooter = await ValidateDataOnRent(request);
 
             var rentObject = new RentalHistoryEntry
             {
                 UserIdentifier = request.UserIdentifier,
-                
                 ScooterId = request.ScooterId,
-                Scooter = null, 
-
-                PickUpStationId = request.StationId,
-                PickUpStation = null,
-                
+                PickUpStationId = scooter.StationId.Value,
                 RentalStartDateTime = DateTime.Now,
             };
-            
+
             await rentalHistoryRepository.RentScooter(rentObject);
+
+            scooter.State = State.Busy;
+            scooter.StationId = null;
+
+            await scooterRepository.UpdateScooter(scooter);
         }
 
 
 
-        public Task<IList<UserHistoryEntryDto>> ReturnScooter(ScooterRentRequest request)
+        public async Task ReturnScooter(ScooterReturnRequest request)
         {
-            throw new NotImplementedException();
+            (long timeElapsed, RentalHistoryEntry RentalHistoryEntry) = await ValidateDataOnReturn(request);
+
+            var returnObject = RentalHistoryEntry;
+            returnObject.DropOffStationId = request.StationId;
+            returnObject.RentalEndDateTime = DateTime.Now;
+            returnObject.DurationAsTicks = timeElapsed;
+
+            await rentalHistoryRepository.ReturnScooter(returnObject);
+
+            var scooterToReturn = returnObject.Scooter;
+
+            scooterToReturn.State = State.Available;
+            scooterToReturn.StationId = request.StationId;
+
+            await scooterRepository.UpdateScooterOnReturn(scooterToReturn);
         }
 
-        private async Task ValidateDataOnAdd(ScooterRentRequest request)
+        private async Task<Scooter> ValidateDataOnRent(ScooterRentRequest request)
         {
-            var doesScooterExist = await stationRepository.DoesScooterExist(request.ScooterId);
-            if (doesScooterExist == false) { throw new InvalidOperationException("No se encontro el scooter"); }
-            
-            var doesStationExist = await stationRepository.DoesStationExist(request.StationId);
-            if (doesStationExist == false) { throw new InvalidOperationException("No se encontro la estacion"); }
+            var scooter = await scooterRepository.GetById(request.ScooterId);
+            if (scooter is null)
+            {
+                throw new InvalidOperationException(message: "No se encontró el monopatín");
+            }
+            else if (scooter.State != State.Available)
+            {
+                throw new InvalidOperationException(message: "El monopatín seleccionado no está disponible");
+            }
+            else if (scooter.StationId is null)
+            {
+                throw new InvalidOperationException(message: "El monopatín seleccionado no está disponible");
+            }
 
             var userRelatedHistoryEntries = await rentalHistoryRepository.GetByUserIdentifier(request.UserIdentifier);
-            if (userRelatedHistoryEntries != null)
+            if (userRelatedHistoryEntries != null && userRelatedHistoryEntries.Count != 0)
             {
                 var modifications = GetModifications(userRelatedHistoryEntries);
-                if (userRelatedHistoryEntries.LastOrDefault().DropOffStation is null)
+                if (userRelatedHistoryEntries.First().DropOffStationId is null)
                 {
-                    throw new InvalidOperationException("el usuario tiene viajes pendientes");
+                    throw new InvalidOperationException(message: "el usuario tiene un viaje en curso");
                 }
 
-                else if (modifications.WeeklyRemainingTime < TimeSpan.FromHours(0))
+                else if (modifications.WeeklyRemainingTime <= TimeSpan.FromHours(0))
                 {
-                    throw new InvalidOperationException("El usuario no posee tiempo restante");
+                    throw new InvalidOperationException(message: "El usuario no posee tiempo restante");
                 }
             }
+            return scooter;
+        }
+
+        private async Task<(long, RentalHistoryEntry)> ValidateDataOnReturn(ScooterReturnRequest request)
+        {
+            var station = await stationRepository.GetByIdWithScooters(request.StationId);
+            if (station is null)
+            {
+                throw new InvalidOperationException(message: "No se encontró la estación");
+            }
+            else if (station.Scooters?.Count >= 10)
+            {
+                throw new InvalidOperationException(message: "La estación no posee espacios disponibles para dejar el monopatín");
+            }
+
+            List<RentalHistoryEntry> userRelatedHistoryEntries = await rentalHistoryRepository.GetByUserIdentifier(request.UserIdentifier);
+            if (!(userRelatedHistoryEntries != null && userRelatedHistoryEntries.Count != 0))
+            {
+                throw new InvalidOperationException(message: "El usuario no tiene viajes activos");
+            }
+
+            var mostRecentRent = userRelatedHistoryEntries.FirstOrDefault();
+            if (mostRecentRent != null && mostRecentRent.DropOffStation != null)
+            {
+                throw new InvalidOperationException(message: "El usuario no tiene viajes activos");
+            }
+
+            var elapsedTime = (DateTime.Now - mostRecentRent.RentalStartDateTime).Ticks;
+            return (elapsedTime, mostRecentRent);
         }
 
         private WeeklyModifiers GetModifications(List<RentalHistoryEntry> entries)
         {
 
-            var lastWeekEntries = entries.Where(f => f.RentalStartDateTime <= DateTime.UtcNow.AddDays(-7));
+            var lastWeekEntries = entries.Where(f => f.RentalStartDateTime >= DateTime.UtcNow.AddDays(-7));
             bool penalties = false;
             bool bonus = false;
             TimeSpan totalElapsedTime = TimeSpan.Zero;
-            var remainingTime = TimeSpan.FromHours(2);
-
+            TimeSpan remainingTime = TimeSpan.FromHours(2);
 
             if (lastWeekEntries != null)
             {
-                penalties = lastWeekEntries.Any(f => f.TimeSpan > TimeSpan.FromHours(2));
-                bonus = lastWeekEntries.Count() > 2 ? true : false;
-                totalElapsedTime = lastWeekEntries
-                    .Where(entry => entry.TimeSpan.HasValue)
-                    .Aggregate(TimeSpan.Zero, (total, entry) => total + entry.TimeSpan.Value);
+                penalties = lastWeekEntries.Any(f => f.RentalDuration > TimeSpan.FromHours(2));
+                bonus = lastWeekEntries.Count() > 2;
+
+                foreach (var entry in lastWeekEntries)
+                {
+                    if (entry.RentalDuration != null)
+                    {
+                        totalElapsedTime =+ entry.RentalDuration.Value;
+                    }
+                }
 
                 if (bonus)
                 {
@@ -119,13 +175,14 @@ namespace rental_scooter.Services
                     remainingTime -= TimeSpan.FromMinutes(30);
 
                 }
+
                 remainingTime = remainingTime - totalElapsedTime;
             }
             return new WeeklyModifiers
             {
                 HasTimeBonuses = bonus,
                 HasPenalties = penalties,
-                WeeklyElapsedTime = totalElapsedTime,
+                WeeklyElapsedTime = totalElapsedTime.Ticks,
                 WeeklyRemainingTime = remainingTime,
             };
         }

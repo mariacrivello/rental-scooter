@@ -11,17 +11,21 @@ namespace rental_scooter.Repositories
             this._dataContext = dataContext;
         }
 
-        public Task<bool> DoesScooterExist(int scooterId)
+      
+        public async Task<bool> DoesStationExist(int stationId)
         {
-            throw new NotImplementedException();
+            return await _dataContext.Stations.AnyAsync(f => f.Id == stationId);
         }
 
-        public Task<bool> DoesStationExist(int stationId)
+        public async Task<Station> GetByIdWithScooters(int stationId)
         {
-            throw new NotImplementedException();
+            return await _dataContext.Stations
+                .Where(f=> f.Id == stationId)
+                .Include(f => f.Scooters)
+                .FirstOrDefaultAsync();
         }
 
-        public async Task<Station?> GetByScooterId(int? scooterId)
+        public async Task<Station?> GetStationByScooterId(int? scooterId)
         {
             return await _dataContext.Stations.Where(f => f.Scooters.Any(g => g.Id == scooterId)).FirstOrDefaultAsync();
         }

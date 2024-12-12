@@ -22,7 +22,8 @@ namespace rental_scooter.Models
          .HasOne(e => e.Station)
          .WithMany(e => e.Scooters)
          .HasForeignKey(e => e.StationId)
-         .HasPrincipalKey(e => e.Id);
+         .HasPrincipalKey(e => e.Id).OnDelete(DeleteBehavior.NoAction);
+
         }
     }
 }
