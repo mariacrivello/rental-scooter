@@ -13,7 +13,11 @@ namespace rental_scooter.Repositories
 
         public async Task<List<RentalHistoryEntry>> GetByUserIdentifier(string userIdentifier)
         {
-            return await _dataContext.RentalHistoryEntries.Where(f => f.UserIdentifier.Equals(userIdentifier)).OrderByDescending(f => f.Id).Include(f=> f.Scooter).ToListAsync();
+            return await _dataContext.RentalHistoryEntries
+                            .Where(f => f.UserIdentifier.Equals(userIdentifier))
+                            .OrderByDescending(f => f.Id)
+                            .Include(f=> f.Scooter)
+                            .ToListAsync();
         }
 
         public async Task RentScooter(RentalHistoryEntry rentalHistoryEntry)

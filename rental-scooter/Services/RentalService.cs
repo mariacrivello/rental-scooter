@@ -162,7 +162,7 @@ namespace rental_scooter.Services
                 {
                     if (entry.RentalDuration != null)
                     {
-                        totalElapsedTime =+ entry.RentalDuration.Value;
+                        totalElapsedTime += entry.RentalDuration.Value;
                     }
                 }
 
@@ -173,7 +173,6 @@ namespace rental_scooter.Services
                 if (penalties)
                 {
                     remainingTime -= TimeSpan.FromMinutes(30);
-
                 }
 
                 remainingTime = remainingTime - totalElapsedTime;

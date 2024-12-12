@@ -14,15 +14,18 @@ namespace rental_scooter.Repositories
 
         public async Task<bool> DoesScooterExist(int scooterId)
         {
-            return await _dataContext.Scooters.AnyAsync(f => f.Id == scooterId);
+            return await _dataContext.Scooters
+                            .AnyAsync(f => f.Id == scooterId);
         }
-        public async Task<Scooter> GetById(int scooterId)
+        public async Task<Scooter?> GetById(int scooterId)
         {
-            return await _dataContext.Scooters.FirstOrDefaultAsync(f => f.Id == scooterId);
+            return await _dataContext.Scooters
+                            .FirstOrDefaultAsync(f => f.Id == scooterId);
         }
         public async Task UpdateScooter(Scooter scooter)
         {
             _dataContext.Attach(scooter);
+
             _dataContext.Entry(scooter).Property(s => s.State).IsModified = true;
             _dataContext.Entry(scooter).Property(s => s.StationId).IsModified = true;
 
@@ -31,15 +34,11 @@ namespace rental_scooter.Repositories
 
         public async Task UpdateScooterOnReturn(Scooter scooter)
         {
-            // Attach the scooter entity if it is not already tracked
             _dataContext.Attach(scooter);
 
-            
-            // Mark the State property as modified
             _dataContext.Entry(scooter).Property(s => s.State).IsModified = true;
             _dataContext.Entry(scooter).Property(s => s.StationId).IsModified = true;
 
-            // Save changes to the database
             await _dataContext.SaveChangesAsync();
         }
     }

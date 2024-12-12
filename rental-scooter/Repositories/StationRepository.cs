@@ -17,7 +17,7 @@ namespace rental_scooter.Repositories
             return await _dataContext.Stations.AnyAsync(f => f.Id == stationId);
         }
 
-        public async Task<Station> GetByIdWithScooters(int stationId)
+        public async Task<Station?> GetByIdWithScooters(int stationId)
         {
             return await _dataContext.Stations
                 .Where(f=> f.Id == stationId)
@@ -27,12 +27,16 @@ namespace rental_scooter.Repositories
 
         public async Task<Station?> GetStationByScooterId(int? scooterId)
         {
-            return await _dataContext.Stations.Where(f => f.Scooters.Any(g => g.Id == scooterId)).FirstOrDefaultAsync();
+            return await _dataContext.Stations
+                            .Where(f => f.Scooters.Any(g => g.Id == scooterId))
+                            .FirstOrDefaultAsync();
         }
 
         public async Task <IEnumerable<Station>>GetStationsWithAvailableScootersAsync()
         {
-            return await _dataContext.Stations.Include(f=> f.Scooters).ToListAsync();
+            return await _dataContext.Stations
+                            .Include(f=> f.Scooters)
+                            .ToListAsync();
         }
     }
 }
