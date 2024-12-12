@@ -4,10 +4,8 @@ namespace rental_scooter.Models
 {
     public class AppDbContext : DbContext
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options)
-            : base(options)
-        {
-        }
+        public AppDbContext(DbContextOptions options)
+            : base(options){ }
 
         public DbSet<Scooter> Scooters { get; set; } = null!;
         public DbSet<Station> Stations { get; set; } = null!;
