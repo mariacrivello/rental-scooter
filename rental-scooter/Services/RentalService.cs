@@ -29,7 +29,7 @@ namespace rental_scooter.Services
 
             return new UserHistoryEntryDto
             {
-                rentalHistoryEntries = historyEntries,
+                RentalHistoryEntries = historyEntries,
                 HasPenalties = modifications.HasPenalties,
                 HasTimeBonuses = modifications.HasTimeBonuses,
                 RemainingTime = modifications.WeeklyRemainingTime

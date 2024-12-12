@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System.Reflection.Metadata;
 
 namespace rental_scooter.Models
 {
@@ -22,7 +21,8 @@ namespace rental_scooter.Models
          .HasOne(e => e.Station)
          .WithMany(e => e.Scooters)
          .HasForeignKey(e => e.StationId)
-         .HasPrincipalKey(e => e.Id).OnDelete(DeleteBehavior.NoAction);
+         .HasPrincipalKey(e => e.Id)
+         .OnDelete(DeleteBehavior.NoAction);
 
         }
     }

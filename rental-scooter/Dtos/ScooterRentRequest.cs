@@ -8,7 +8,7 @@
 
     public class ScooterReturnRequest
     {
-        public string UserIdentifier { get; set; }
+        public required string UserIdentifier { get; set; }
         public int StationId { get; set; }
     }
 
