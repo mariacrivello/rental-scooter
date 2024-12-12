@@ -57,29 +57,5 @@ namespace rental_scooters.Test
             Assert.NotNull(resultList);
             Assert.NotEmpty(resultList);
         }
-
-        //[Fact]
-        //public async Task Test_RentScooter()
-        //{
-        //    await appDbContext.Stations.AddAsync(new Station
-        //    {
-        //        Name = "estacion 1",
-        //        Scooters = new List<Scooter>
-        //        {
-        //            new Scooter { State = 0 }
-        //        }
-        //    });
-        //    await appDbContext.SaveChangesAsync();
-        //
-        //    var result = await rentalController.RentScooter(new ScooterRentRequest { UserIdentifier = "5656", ScooterId = 1});
-        //    var resultType = result as OkObjectResult;
-        //    
-        //    //var resultList = resultType.Value as List<Station>;
-        //
-        //    Assert.NotNull(result);
-        //    Assert.IsType<List<Station>>(resultType.Value);
-        //   // Assert.NotNull(resultList);
-        //   // Assert.NotEmpty(resultList);
-        //}
     }
 }
