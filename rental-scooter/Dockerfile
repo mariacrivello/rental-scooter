@@ -27,4 +27,4 @@ RUN dotnet publish "./rental-scooter.csproj" -c $BUILD_CONFIGURATION -o /app/pub
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "rental-scooter.dll"]
+ENTRYPOINT ["dotnet", "rental-scooter.dll", "--environment=Development"]
