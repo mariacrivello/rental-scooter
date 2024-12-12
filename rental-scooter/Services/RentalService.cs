@@ -20,6 +20,14 @@ namespace rental_scooter.Services
         public async Task<UserHistoryEntryDto> GetHistoryEntriesByUserIdentifier(string user)
         {
             var historyEntries = await rentalHistoryRepository.GetByUserIdentifier(user);
+            foreach (var historyEntry in historyEntries)
+            {
+                historyEntry.RentalStartDateTime = historyEntry.RentalStartDateTime.AddHours(-3);
+                if (historyEntry.RentalEndDateTime != null)
+                {
+                    historyEntry.RentalEndDateTime = historyEntry.RentalEndDateTime.Value.AddHours(-3);
+                }
+            }
             var modifications = new WeeklyModifiers();
 
             if (historyEntries != null)
