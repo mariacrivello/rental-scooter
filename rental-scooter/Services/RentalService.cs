@@ -52,7 +52,7 @@ namespace rental_scooter.Services
 
         public async Task<UserRentDto> GetHistoryEntriesByUserIdentifierFilteredByDate(string user, DateTime startDate, DateTime endDate)
         {
-            var historyEntries = await rentalHistoryRepository.GetByUserIdentifierFilteredByDate(user, startDate, endDate);
+            var historyEntries = await rentalHistoryRepository.GetByUserIdentifierFilteredByDate(user, startDate.AddHours(-3), endDate.AddHours(-3));
 
             var rideCount = historyEntries.Count();
             var modifications = new TimeModifiers();
