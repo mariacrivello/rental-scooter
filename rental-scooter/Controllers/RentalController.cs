@@ -35,13 +35,23 @@ namespace rental_scooter.Controllers
             return Ok(result);
         }
 
+        [HttpGet]
+        [Route("rental-history-entry-by-user/{user}/{startDate}/{endDate}")]
+        [SwaggerOperation(Summary = "Consigue el historial de movimientos de un usuario entre dos fechas")]
+
+        public async Task<IActionResult> GetUserRentalHistoryEntries(string user, DateTime startDate, DateTime endDate)
+        {
+            var result = await rentalService.GetHistoryEntriesByUserIdentifierFilteredByDate(user, startDate, endDate);
+            return Ok(result);
+        }
+
         [HttpPost]
         [Route("rent-scooter")]
         [SwaggerOperation(Summary = "Retira un scooter")]
         public async Task<IActionResult> RentScooter([FromBody]ScooterRentRequest request)
         {
-            await rentalService.RentScooter(request);
-            return Ok();
+            var result = await rentalService.RentScooter(request);
+            return Ok(result);
         }
 
         [HttpPut]
@@ -49,8 +59,8 @@ namespace rental_scooter.Controllers
         [SwaggerOperation(Summary = "Devuelve un scooter")]
         public async Task<IActionResult> ReturnScooter([FromBody]ScooterReturnRequest request)
         {
-            await rentalService.ReturnScooter(request);
-            return Ok();
+            var result = await rentalService.ReturnScooter(request);
+            return Ok(result);
         }
     }
 }

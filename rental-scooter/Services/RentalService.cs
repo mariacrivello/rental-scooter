@@ -1,6 +1,7 @@
 ﻿using rental_scooter.Dtos;
 using rental_scooter.Models;
 using rental_scooter.Repositories;
+using System;
 
 namespace rental_scooter.Services
 {
@@ -16,7 +17,11 @@ namespace rental_scooter.Services
             this.rentalHistoryRepository = rentalHistoryRepository;
             this.scooterRepository = scooterRepository;
         }
-
+        public async Task<IEnumerable<Station>> GetStationsWithAvailableScooters()
+        {
+            var result = await stationRepository.GetStationsWithAvailableScootersAsync();
+            return result;
+        }
         public async Task<UserHistoryEntryDto> GetHistoryEntriesByUserIdentifier(string user)
         {
             var historyEntries = await rentalHistoryRepository.GetByUserIdentifier(user);
@@ -28,11 +33,12 @@ namespace rental_scooter.Services
                     historyEntry.RentalEndDateTime = historyEntry.RentalEndDateTime.Value.AddHours(-3);
                 }
             }
-            var modifications = new WeeklyModifiers();
+            var modifications = new TimeModifiers();
 
             if (historyEntries != null)
             {
-                modifications = GetModifications(historyEntries);
+                var lastWeekEntries = historyEntries.Where(f => f.RentalStartDateTime >= DateTime.UtcNow.AddDays(-7)).ToList();
+                modifications = GetModifications(lastWeekEntries);
             }
 
             return new UserHistoryEntryDto
@@ -40,18 +46,34 @@ namespace rental_scooter.Services
                 RentalHistoryEntries = historyEntries,
                 HasPenalties = modifications.HasPenalties,
                 HasTimeBonuses = modifications.HasTimeBonuses,
-                RemainingTime = modifications.WeeklyRemainingTime
+                RemainingTime = modifications.RemainingTime
             };
         }
 
-        public async Task<IEnumerable<Station>> GetStationsWithAvailableScooters()
+        public async Task<UserRentDto> GetHistoryEntriesByUserIdentifierFilteredByDate(string user, DateTime startDate, DateTime endDate)
         {
-            var result = await stationRepository.GetStationsWithAvailableScootersAsync();
-            return result;
+            var historyEntries = await rentalHistoryRepository.GetByUserIdentifierFilteredByDate(user, startDate, endDate);
+
+            var rideCount = historyEntries.Count();
+            var modifications = new TimeModifiers();
+
+            if (historyEntries != null)
+            {
+                var lastWeekEntries = historyEntries.Where(f => f.RentalStartDateTime >= DateTime.UtcNow.AddDays(-7)).ToList();
+                modifications = GetModifications(lastWeekEntries);
+            }
+
+            return new UserRentDto
+            {
+                ScootersRented = rideCount,
+                TotalElapsedTime = TimeSpan.FromTicks(modifications.ElapsedTime.Value),
+                HasOngoingRides = historyEntries.Any(f => f.RentalEndDateTime is null)
+            };
         }
 
-        public async Task RentScooter(ScooterRentRequest request)
+        public async Task<TimeSpan> RentScooter(ScooterRentRequest request)
         {
+
             var scooter = await ValidateDataOnRent(request);
 
             var rentObject = new RentalHistoryEntry
@@ -68,11 +90,19 @@ namespace rental_scooter.Services
             scooter.StationId = null;
 
             await scooterRepository.UpdateScooter(scooter);
+
+            var historyEntries = await rentalHistoryRepository.GetByUserIdentifier(request.UserIdentifier);
+            var modifications = new TimeModifiers();
+
+            if (historyEntries != null)
+            {
+                var lastWeekEntries = historyEntries.Where(f => f.RentalStartDateTime >= DateTime.UtcNow.AddDays(-7)).ToList();
+                modifications = GetModifications(lastWeekEntries);
+            }
+            return modifications.RemainingTime.Value;
         }
 
-
-
-        public async Task ReturnScooter(ScooterReturnRequest request)
+        public async Task<TimeSpan> ReturnScooter(ScooterReturnRequest request)
         {
             (long timeElapsed, RentalHistoryEntry RentalHistoryEntry) = await ValidateDataOnReturn(request);
 
@@ -89,10 +119,25 @@ namespace rental_scooter.Services
             scooterToReturn.StationId = request.StationId;
 
             await scooterRepository.UpdateScooterOnReturn(scooterToReturn);
+
+            var historyEntries = await rentalHistoryRepository.GetByUserIdentifier(request.UserIdentifier);
+            var modifications = new TimeModifiers();
+
+            if (historyEntries != null)
+            {
+                var lastWeekEntries = historyEntries.Where(f => f.RentalStartDateTime >= DateTime.UtcNow.AddDays(-7)).ToList();
+                modifications = GetModifications(lastWeekEntries);
+            }
+            return modifications.RemainingTime.Value;
         }
 
         private async Task<Scooter> ValidateDataOnRent(ScooterRentRequest request)
         {
+            var identifierShouldNotHaveLetters = request.UserIdentifier.Any(char.IsLetter);
+            if(identifierShouldNotHaveLetters)
+            {
+                throw new InvalidOperationException(message: "Solo se admiten DNI ");
+            }
             var scooter = await scooterRepository.GetById(request.ScooterId);
             if (scooter is null)
             {
@@ -110,13 +155,15 @@ namespace rental_scooter.Services
             var userRelatedHistoryEntries = await rentalHistoryRepository.GetByUserIdentifier(request.UserIdentifier);
             if (userRelatedHistoryEntries != null && userRelatedHistoryEntries.Count != 0)
             {
-                var modifications = GetModifications(userRelatedHistoryEntries);
+                var lastWeekEntries = userRelatedHistoryEntries.Where(f => f.RentalStartDateTime >= DateTime.UtcNow.AddDays(-7)).ToList();
+
+                var modifications = GetModifications(lastWeekEntries);
                 if (userRelatedHistoryEntries.First().DropOffStationId is null)
                 {
                     throw new InvalidOperationException(message: "el usuario tiene un viaje en curso");
                 }
 
-                else if (modifications.WeeklyRemainingTime <= TimeSpan.FromHours(0))
+                else if (modifications.RemainingTime <= TimeSpan.FromHours(0))
                 {
                     throw new InvalidOperationException(message: "El usuario no posee tiempo restante");
                 }
@@ -126,6 +173,11 @@ namespace rental_scooter.Services
 
         private async Task<(long, RentalHistoryEntry)> ValidateDataOnReturn(ScooterReturnRequest request)
         {
+            var identifierShouldNotHaveLetters = request.UserIdentifier.Any(char.IsLetter);
+            if(identifierShouldNotHaveLetters)
+            {
+                throw new InvalidOperationException(message: "Solo se admiten DNI ");
+            }
             var station = await stationRepository.GetByIdWithScooters(request.StationId);
             if (station is null)
             {
@@ -152,21 +204,20 @@ namespace rental_scooter.Services
             return (elapsedTime, mostRecentRent);
         }
 
-        private WeeklyModifiers GetModifications(List<RentalHistoryEntry> entries)
+        private TimeModifiers GetModifications(List<RentalHistoryEntry> entries)
         {
 
-            var lastWeekEntries = entries.Where(f => f.RentalStartDateTime >= DateTime.UtcNow.AddDays(-7));
             bool penalties = false;
             bool bonus = false;
             TimeSpan totalElapsedTime = TimeSpan.Zero;
             TimeSpan remainingTime = TimeSpan.FromHours(2);
 
-            if (lastWeekEntries != null)
+            if (entries != null)
             {
-                penalties = lastWeekEntries.Any(f => f.RentalDuration > TimeSpan.FromHours(2));
-                bonus = lastWeekEntries.Count() > 2;
+                penalties = entries.Any(f => f.RentalDuration > TimeSpan.FromHours(2));
+                bonus = entries.Count() > 2;
 
-                foreach (var entry in lastWeekEntries)
+                foreach (var entry in entries)
                 {
                     if (entry.RentalDuration != null)
                     {
@@ -185,12 +236,12 @@ namespace rental_scooter.Services
 
                 remainingTime = remainingTime - totalElapsedTime;
             }
-            return new WeeklyModifiers
+            return new TimeModifiers
             {
                 HasTimeBonuses = bonus,
                 HasPenalties = penalties,
-                WeeklyElapsedTime = totalElapsedTime.Ticks,
-                WeeklyRemainingTime = remainingTime,
+                ElapsedTime = totalElapsedTime.Ticks,
+                RemainingTime = remainingTime,
             };
         }
     }

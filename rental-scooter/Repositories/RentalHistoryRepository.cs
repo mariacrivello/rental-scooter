@@ -16,9 +16,20 @@ namespace rental_scooter.Repositories
             return await _dataContext.RentalHistoryEntries
                             .Where(f => f.UserIdentifier.Equals(userIdentifier))
                             .OrderByDescending(f => f.Id)
-                            .Include(f=> f.Scooter)
+                            .Include(f => f.Scooter)
                             .ToListAsync();
         }
+
+        public async Task<List<RentalHistoryEntry>> GetByUserIdentifierFilteredByDate(string userIdentifier, DateTime startDate, DateTime endDate)
+        {
+            return await _dataContext.RentalHistoryEntries
+                            .Where(f => f.UserIdentifier == userIdentifier &&
+                                        f.RentalStartDateTime >= startDate && f.RentalStartDateTime <= endDate)
+                            .OrderByDescending(f => f.Id)
+                            .Include(f => f.Scooter)
+                            .ToListAsync();
+        }
+
 
         public async Task RentScooter(RentalHistoryEntry rentalHistoryEntry)
         {

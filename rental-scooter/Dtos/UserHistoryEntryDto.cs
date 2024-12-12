@@ -9,4 +9,11 @@ namespace rental_scooter.Dtos
         public bool HasTimeBonuses { get; set; }
         public TimeSpan? RemainingTime { get; set; }
     }
+
+    public class UserRentDto
+    {
+        public int? ScootersRented { get; set; }
+        public TimeSpan? TotalElapsedTime { get; set; }
+        public bool HasOngoingRides { get; set; }
+    }
 }

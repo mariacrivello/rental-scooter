@@ -7,8 +7,9 @@ namespace rental_scooter.Services
     public interface IRentalService
     {
         Task<UserHistoryEntryDto> GetHistoryEntriesByUserIdentifier(string user);
+        Task<UserRentDto> GetHistoryEntriesByUserIdentifierFilteredByDate(string user, DateTime startDate, DateTime endDate);
         Task<IEnumerable<Station>> GetStationsWithAvailableScooters();
-        Task RentScooter(ScooterRentRequest request);
-        Task ReturnScooter(ScooterReturnRequest request);
+        Task<TimeSpan> RentScooter(ScooterRentRequest request);
+        Task<TimeSpan> ReturnScooter(ScooterReturnRequest request);
     }
 }
