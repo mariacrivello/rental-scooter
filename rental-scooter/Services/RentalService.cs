@@ -138,6 +138,7 @@ namespace rental_scooter.Services
             {
                 throw new InvalidOperationException(message: "Solo se admiten DNI ");
             }
+
             var scooter = await scooterRepository.GetById(request.ScooterId);
             if (scooter is null)
             {

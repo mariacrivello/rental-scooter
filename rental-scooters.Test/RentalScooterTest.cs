@@ -57,5 +57,61 @@ namespace rental_scooters.Test
             Assert.NotNull(resultList);
             Assert.NotEmpty(resultList);
         }
+
+        [Fact]
+        public async Task Test_CheckWeeklyRental()
+        {
+            await appDbContext.RentalHistoryEntries.AddAsync(new RentalHistoryEntry
+            {
+                UserIdentifier = "1111",
+                Scooter = new Scooter { Id = 1, State = State.Busy, StationId = null },
+                PickUpStation = new Station { Name = "a" },
+                RentalStartDateTime = DateTime.Now.AddDays(-8),
+
+            });
+            await appDbContext.SaveChangesAsync();
+
+            var result = await rentalController.GetUserRentalHistoryEntries("1111");
+            var resultType = result as OkObjectResult;
+            var resultList = resultType.Value as List<UserHistoryEntryDto>;
+
+            Assert.NotNull(result);
+            Assert.NotNull(resultList);
+            Assert.NotEmpty(resultList);
+        }
+        [Fact]
+        public async Task Test_RentScooter()
+        {
+            await appDbContext.Stations.AddAsync(new Station
+            {
+                Name = "estacion 1",
+                Scooters = new List<Scooter>
+                {
+                    new Scooter {Id = 2, State = 0 }
+                }
+            });
+
+
+            await appDbContext.RentalHistoryEntries.AddAsync(new RentalHistoryEntry
+            {
+                UserIdentifier = "1111",
+                Scooter = new Scooter { Id = 1, State = State.Busy, StationId = null },
+                PickUpStation = new Station { Name = "a" },
+                RentalStartDateTime = DateTime.Now.AddDays(-8),
+
+            });
+            await appDbContext.SaveChangesAsync();
+
+            try
+            {
+                BadRequestObjectResult result = (BadRequestObjectResult)await rentalController.RentScooter(new ScooterRentRequest { UserIdentifier = "1111", ScooterId = 2 });
+                Console.WriteLine(result.Value);
+                Assert.StrictEqual(400, result.StatusCode );
+            }
+            catch (Exception ex)
+            {
+                Assert.Fail();
+            }
+        }
     }
 }
